@@ -1,0 +1,56 @@
+version: 2.1
+
+description: Ansible lint and playbook syntax checking
+executors:
+  default:
+    description: Custom Docker image with pre-packaged ansible packages
+    docker:
+    - image: brittlejf/ansible:latest
+
+jobs:
+  lint:
+    description: Run ansible lint
+    executor: default
+    parameters:
+      config:
+        description: Specify path to a custom ansible lint config
+        default: ""
+        type: string
+      directory:
+        default: ~/
+        description: Specify directory to search for ansible yml files
+        type: string
+    steps:
+    - checkout
+    - run: 
+        name: Check ansible lint version
+        command: ansible-lint --version
+    - run: echo "parameter directory is: << parameters.directory >>"
+    - run: echo "parameter config is: << parameters.config >>"
+    - when:
+        condition: << parameters.config >>
+        steps:
+          - run: 
+              name: Run ansible lint
+              command: find <<parameters.directory>> -type f -name '*.yml' | xargs ansible-lint -c <<parameters.config>>
+    - unless:
+        condition: << parameters.config >>
+        steps:
+          - run: 
+              name: Run ansible lint
+              command: find <<parameters.directory>> -type f -name '*.yml' | xargs ansible-lint -c <<parameters.config>>
+  playbook-syntax:
+    description: Run ansible-playbook syntax check
+    executor: default
+    parameters:
+      directory:
+        description: Specify path to look for playbooks
+        default: ./playbooks
+        type: string
+    steps:
+    - checkout
+    - run: echo "parameter directory is: << parameters.directory >>"
+    - run: 
+        name: "Check ansible-playbook syntax"
+        command: find <<parameters.directory>> -type f -name '*.yml' | xargs ansible-playbook --syntax-check
+
